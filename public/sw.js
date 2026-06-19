@@ -15,13 +15,24 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only cache same-origin GET requests (local assets).
+  // Let the browser handle API calls and cross-origin requests natively —
+  // intercepting them here caused POST requests to Supabase to return
+  // undefined on catch, which the browser surfaced as "Failed to fetch".
+  if (
+    event.request.method !== 'GET' ||
+    !event.request.url.startsWith(self.location.origin)
+  ) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
       return fetch(event.request).catch(() => {
-        // Fallback for offline mode if needed
+        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );

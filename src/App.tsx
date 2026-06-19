@@ -13,7 +13,8 @@ import { SAMPLE_ROUTES } from './data/routes';
 import { calculateHaversineDistance, getMinDistanceToRoute, getLodgingDistanceOnRoute } from './utils/geo';
 import { mapDbToLodging, mapLodgingToDb } from './utils/supabaseMappers';
 
-
+const getImageUrls = (lodging: Lodging): string[] =>
+  lodging.imageUrls || ((lodging as any).imageUrl ? [(lodging as any).imageUrl] : []);
 
 function App() {
   // Navigation State
@@ -54,8 +55,6 @@ function App() {
     }, 4000);
   };
 
-  // Shadow standard alert() to use Toast Notification for premium UX
-  const alert = (message: string) => showToast(message);
 
   // Group join toggle state
   const [showJoinInput, setShowJoinInput] = useState(false);
@@ -176,20 +175,20 @@ function App() {
         setUser(session?.user ?? null);
         
         if (isTestMode) {
-          alert('Subscription bypassed successfully (Test Mode)!');
+          showToast('Subscription bypassed successfully (Test Mode)!');
         } else {
-          alert('Subscription activated! Thank you for hosting the gravel community.');
+          showToast('Subscription activated! Thank you for hosting the gravel community.');
         }
       } catch (err: any) {
         console.error('Error updating user metadata in Supabase:', err);
-        alert(`Failed to activate subscription: ${err.message}`);
+        showToast(`Failed to activate subscription: ${err.message}`);
       }
     } else {
       localStorage.setItem('bikepack_local_subscribed', 'true');
       if (isTestMode) {
-        alert('Subscription bypassed locally (Test Mode)!');
+        showToast('Subscription bypassed locally (Test Mode)!');
       } else {
-        alert('Subscription activated (local storage fallback)!');
+        showToast('Subscription activated (local storage fallback)!');
       }
       window.location.reload();
     }
@@ -209,13 +208,13 @@ function App() {
         
         const { data: { session } } = await supabase.auth.refreshSession();
         setUser(session?.user ?? null);
-        alert('Subscription reset to free tier.');
+        showToast('Subscription reset to free tier.');
       } catch (err: any) {
-        alert(err.message);
+        showToast(err.message);
       }
     } else {
       localStorage.removeItem('bikepack_local_subscribed');
-      alert('Subscription reset locally.');
+      showToast('Subscription reset locally.');
       window.location.reload();
     }
   };
@@ -398,7 +397,7 @@ function App() {
           const trkpts = xmlDoc.getElementsByTagName("trkpt");
           
           if (trkpts.length === 0) {
-            alert("No track points found in GPX file.");
+            showToast("No track points found in GPX file.");
             return;
           }
           
@@ -436,7 +435,7 @@ function App() {
           setGpxFilterActive(true);
         } catch (err) {
           console.error("Error parsing GPX file", err);
-          alert("Error parsing GPX file. Please verify it is a valid XML GPX format.");
+          showToast("Error parsing GPX file. Please verify it is a valid XML GPX format.");
         }
       };
       reader.readAsText(file);
@@ -482,7 +481,7 @@ function App() {
       }
     } catch (error) {
       console.error('Error searching location:', error);
-      alert('Location search failed. Please try again.');
+      showToast('Location search failed. Please try again.');
     } finally {
       if (type === 'start') setSearchingStart(false);
       else setSearchingEnd(false);
@@ -512,7 +511,7 @@ function App() {
   // GPS geolocation to use current device location as Start point (FREE)
   const useCurrentLocationAsStart = () => {
     if (!navigator.geolocation) {
-      alert("This device or browser does not support GPS geolocation.");
+      showToast("This device or browser does not support GPS geolocation.");
       return;
     }
 
@@ -539,13 +538,13 @@ function App() {
         if (error.code === error.PERMISSION_DENIED) {
           msg = "Location permission denied. Please allow location access in your browser settings.";
         }
-        alert(msg);
+        showToast(msg);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  const [myClientId] = useState(() => Math.random().toString(36).substring(2, 10));
+  const myClientIdRef = useRef(Math.random().toString(36).substring(2, 10));
 
   // Periodically send my GPS location to Supabase Realtime channel if sharing is active
   useEffect(() => {
@@ -567,7 +566,7 @@ function App() {
             type: 'broadcast',
             event: 'location',
             payload: {
-              clientId: myClientId,
+              clientId: myClientIdRef.current,
               name: groupNickname,
               lat,
               lng,
@@ -591,7 +590,7 @@ function App() {
     return () => {
       clearInterval(interval);
     };
-  }, [groupRideCode, isSharingLocation, groupNickname, myClientId]);
+  }, [groupRideCode, isSharingLocation, groupNickname]);
 
   // Subscribe to group ride channel and receive real-time locations from peers
   useEffect(() => {
@@ -605,7 +604,7 @@ function App() {
     channel
       .on('broadcast', { event: 'location' }, (response: any) => {
         const { clientId, name, lat, lng, timestamp } = response.payload;
-        if (clientId === myClientId) return; // Skip my own updates
+        if (clientId === myClientIdRef.current) return; // Skip my own updates
 
         setGroupMembers((prev) => {
           // Will recalculate distance and status on myLocationForGroup updates
@@ -644,7 +643,7 @@ function App() {
       channel.unsubscribe();
       clearInterval(cleanupInterval);
     };
-  }, [groupRideCode, myClientId]);
+  }, [groupRideCode]);
 
   // Update peer distances whenever my location or peer locations update
   useEffect(() => {
@@ -711,7 +710,7 @@ function App() {
         const data = await res.json();
         
         if (!data.routes || data.routes.length === 0) {
-          alert('Could not calculate a bicycle route between these two locations.');
+          showToast('Could not calculate a bicycle route between these two locations.');
           setRoutingEnd(null);
           return;
         }
@@ -748,7 +747,7 @@ function App() {
         setGpxFilterActive(true);
       } catch (err: any) {
         console.error(err);
-        alert('Error fetching route from OSRM Router. Please try again.');
+        showToast('Error fetching route from OSRM Router. Please try again.');
       } finally {
         setRoutingLoading(false);
       }
@@ -783,7 +782,7 @@ function App() {
           password: authPassword,
         });
         if (error) throw error;
-        alert('Registration successful! Please verify your email or sign in.');
+        showToast('Registration successful! Please verify your email or sign in.');
         setAuthModalOpen(false);
         setAuthEmail('');
         setAuthPassword('');
@@ -800,7 +799,7 @@ function App() {
     await supabase.auth.signOut();
     setUser(null);
     setBookings([]);
-    alert('Logged out successfully.');
+    showToast('Logged out successfully.');
   };
 
   // Handle Book Action
@@ -812,24 +811,24 @@ function App() {
     if (isSupabaseConfigured && !user) {
       setAuthMode('login');
       setAuthModalOpen(true);
-      alert('Please sign in or sign up to book a basecamp.');
+      showToast('Please sign in or sign up to book a basecamp.');
       return;
     }
 
     if (!bookingCheckIn || !bookingCheckOut) {
-      alert('Please select check-in and check-out dates.');
+      showToast('Please select check-in and check-out dates.');
       return;
     }
     if (new Date(bookingCheckIn) >= new Date(bookingCheckOut)) {
-      alert('Check-out must be after check-in.');
+      showToast('Check-out must be after check-in.');
       return;
     }
     if (bookingBikes > selectedLodging.maxBikes) {
-      alert(`This host only accommodates up to ${selectedLodging.maxBikes} bikes.`);
+      showToast(`This host only accommodates up to ${selectedLodging.maxBikes} bikes.`);
       return;
     }
 
-    const bookingImg = (selectedLodging.imageUrls && selectedLodging.imageUrls[0]) || (selectedLodging as any).imageUrl || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b';
+    const bookingImg = getImageUrls(selectedLodging)[0] || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b';
     const newBooking: Booking = {
       id: `booking-${Date.now()}`,
       lodgingId: selectedLodging.id,
@@ -859,15 +858,15 @@ function App() {
         if (error) throw error;
         
         setBookings([newBooking, ...bookings]);
-        alert('Booking request confirmed via Supabase DB!');
+        showToast('Booking request confirmed via Supabase DB!');
       } catch (err: any) {
         console.error('Supabase booking error:', err);
-        alert(`Failed to save booking to database: ${err.message}`);
+        showToast(`Failed to save booking to database: ${err.message}`);
         return;
       }
     } else {
       setBookings([newBooking, ...bookings]);
-      alert('Booking request saved locally!');
+      showToast('Booking request saved locally!');
     }
 
     setSelectedLodging(null);
@@ -889,14 +888,14 @@ function App() {
           if (error) throw error;
           
           setBookings(bookings.filter((b) => b.id !== bookingId));
-          alert('Booking cancelled successfully.');
+          showToast('Booking cancelled successfully.');
         } catch (err: any) {
           console.error('Supabase cancel booking error:', err);
-          alert(`Failed to cancel booking: ${err.message}`);
+          showToast(`Failed to cancel booking: ${err.message}`);
         }
       } else {
         setBookings(bookings.filter((b) => b.id !== bookingId));
-        alert('Booking cancelled locally.');
+        showToast('Booking cancelled locally.');
       }
     }
   };
@@ -905,7 +904,7 @@ function App() {
   const handleHostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLodgingName || !newHostName || !newRegion || !newDescription) {
-      alert('Please fill out all required fields.');
+      showToast('Please fill out all required fields.');
       return;
     }
 
@@ -913,7 +912,7 @@ function App() {
     if (isSupabaseConfigured && !user) {
       setAuthMode('login');
       setAuthModalOpen(true);
-      alert('Please sign in or sign up to list a property.');
+      showToast('Please sign in or sign up to list a property.');
       return;
     }
 
@@ -955,15 +954,15 @@ function App() {
         const { error } = await supabase.from('lodgings').insert(mapLodgingToDb(newLodging));
         if (error) throw error;
         setListings([newLodging, ...listings]);
-        alert('Your bike-friendly stay has been listed on Supabase DB!');
+        showToast('Your bike-friendly stay has been listed on Supabase DB!');
       } catch (err: any) {
         console.error('Supabase host listing error:', err);
-        alert(`Failed to save listing to database: ${err.message}`);
+        showToast(`Failed to save listing to database: ${err.message}`);
         return;
       }
     } else {
       setListings([newLodging, ...listings]);
-      alert('Your bike-friendly stay has been listed locally!');
+      showToast('Your bike-friendly stay has been listed locally!');
     }
     
     // Clear Form
@@ -1238,9 +1237,14 @@ function App() {
                 <button className="nav-btn-outline" onClick={handleSignOut}>Sign Out</button>
               </div>
             ) : (
-              <button className="nav-btn-outline" onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}>
-                Sign In
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button className="nav-btn-outline" onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}>
+                  Sign In
+                </button>
+                <button className="nav-btn active-accent" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }} onClick={() => { setAuthMode('signup'); setAuthModalOpen(true); }}>
+                  Sign Up
+                </button>
+              </div>
             )
           ) : (
             <span className="local-mode-badge" title="Running in Local Fallback mode (no credentials)">Local Mode</span>
@@ -1636,7 +1640,7 @@ function App() {
                                   setIsSharingLocation(true);
                                   setShowJoinInput(false);
                                 } else {
-                                  alert("Please enter a valid group code.");
+                                  showToast("Please enter a valid group code.");
                                 }
                               }}
                             >
@@ -2009,7 +2013,7 @@ function App() {
                         const checkoutUrl = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL;
                         if (!checkoutUrl || checkoutUrl.includes('yourstore')) {
                           e.preventDefault();
-                          alert('Lemon Squeezy Checkout URL is not configured. Please set VITE_LEMON_SQUEEZY_CHECKOUT_URL in your .env file. For sandbox testing, use the bypass button below.');
+                          showToast('Lemon Squeezy Checkout URL is not configured. Please set VITE_LEMON_SQUEEZY_CHECKOUT_URL in your .env file. For sandbox testing, use the bypass button below.');
                         }
                       }}
                     >
@@ -2050,7 +2054,7 @@ function App() {
                         const portalUrl = import.meta.env.VITE_LEMON_SQUEEZY_PORTAL_URL;
                         if (!portalUrl || portalUrl.includes('yourstore')) {
                           e.preventDefault();
-                          alert('Lemon Squeezy Customer Billing Portal URL is not configured. Please set VITE_LEMON_SQUEEZY_PORTAL_URL in your .env file.');
+                          showToast('Lemon Squeezy Customer Billing Portal URL is not configured. Please set VITE_LEMON_SQUEEZY_PORTAL_URL in your .env file.');
                         }
                       }}
                     >
@@ -2347,7 +2351,7 @@ function App() {
             
             {/* Gallery system */}
             {(() => {
-              const urls = selectedLodging.imageUrls || ((selectedLodging as any).imageUrl ? [(selectedLodging as any).imageUrl] : []);
+              const urls = getImageUrls(selectedLodging);
               const defaultImg = 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=800&h=500&q=80';
               return (
                 <div className="modal-gallery-wrapper">
@@ -2609,8 +2613,46 @@ function App() {
             </button>
             
             <div className="auth-form-wrapper">
-              <h2>{authMode === 'login' ? 'Sign In to Bikepack Boarding' : 'Create an Account'}</h2>
-              <p className="auth-subtitle">Support local hosts & track your bikepacking basecamps</p>
+              {/* Premium Tab Switcher in Auth Modal */}
+              <div className="auth-modal-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.25rem' }}>
+                <button 
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: authMode === 'login' ? '2px solid var(--accent-lime)' : 'none',
+                    color: authMode === 'login' ? 'var(--accent-lime)' : 'var(--text-secondary)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => { setAuthMode('login'); setAuthError(null); }}
+                >
+                  Sign In (로그인)
+                </button>
+                <button 
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: authMode === 'signup' ? '2px solid var(--accent-lime)' : 'none',
+                    color: authMode === 'signup' ? 'var(--accent-lime)' : 'var(--text-secondary)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                >
+                  Sign Up (회원가입)
+                </button>
+              </div>
+              <p className="auth-subtitle" style={{ textAlign: 'center', marginTop: '-0.5rem', marginBottom: '1rem' }}>Support local hosts & track your bikepacking basecamps</p>
               
               <form onSubmit={handleAuthSubmit} className="host-form auth-form">
                 {authError && <div className="auth-error-message"><i className="fa-solid fa-triangle-exclamation"></i> {authError}</div>}
