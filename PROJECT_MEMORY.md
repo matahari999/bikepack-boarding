@@ -38,6 +38,17 @@ This document serves as a persistent state of the development phase, business lo
 * **Database & Auth Integration (Supabase)**: Integrated Supabase client SDK. Added a user signup/login panel supporting email and password authentication, and bound stay listings and bookings to relational Supabase tables.
 * **Smart Data Syncing & Seeding**: Implemented table mapping adapters between camelCase JS properties and snake_case DB columns. Features auto-seeding on fresh database connects (inserts initial mock data if stays are empty) and automatic fallback to `localStorage` mode when credentials are missing.
 
+### D. Advanced Real-time & Geolocation Features
+* **Address/Geocoding Navigation**: Integrated Nominatim OpenStreetMap API to allow users to search for start and end points via text. Added a **`Use My GPS`** button utilizing the browser's Geolocation API to set current coordinates as the route start point for 100% free GPS search.
+* **Real-time Group Tracker & Dropout Alerting**: Added a sidebar group tracking module. Users can set nicknames, create a lobby (generating unique `RIDE-XXXX` codes), or join via code. Leverages **Supabase Realtime Broadcast** (WebSockets memory routing) to avoid database read/write limits and run 100% free.
+* **3-tier Dropout Alerts**: Recalculates distance between riders on the fly using Haversine formula and flags statuses as:
+  * `Normal`: Within 200m.
+  * `Distant` (Yellow Alert): More than 200m away.
+  * `Lost` (Red Alert): More than 500m away (spawns map pulse indicator).
+* **Premium Toast Notification**: Replaced browser standard `alert()` popups with a beautiful gravel-dark floating toast alert system for premium UI/UX feedback.
+* **Supabase Client Safe Proxy**: Wrapped the Supabase client inside a Safe Proxy pattern so that when `.env` is unconfigured, the app falls back gracefully to Mock Local Storage mode instead of crashing or polluting the console.
+* **Vitest Suite**: Installed `vitest` and added automated test assertions inside [geo.test.ts](file:///D:/%EC%95%88%ED%8B%B0%EA%B7%B8%EB%9E%98%EB%B9%84%ED%8B%B0%20CLI/bikepack-boarding/src/utils/geo.test.ts) to verify GPS coordinate mathematics.
+
 ---
 
 ## 3. Solved Engineering Issues
@@ -47,8 +58,12 @@ This document serves as a persistent state of the development phase, business lo
 2. **LocalStorage Schema Schema Mismatch**:
    * *Issue*: Older sessions had single `imageUrl` strings in localStorage, throwing runtime errors when calling array methods on the new `imageUrls` property.
    * *Fix*: Applied fallback defensive checks (`lodging.imageUrls || [lodging.imageUrl]`) across all components (cards, booking history, and modal overlays).
+3. **Supabase "Failed to fetch" Auth Error (Host Domain Unresolved)**:
+   * *Issue*: Users faced `Failed to fetch` network failures during sign-up/sign-in due to an invalid project host URL (`hgytnajeirrkspfzxrjo.supabase.co`).
+   * *Fix*: Located the actual active Supabase project reference ID (**`qvezomdstiudvbkuawlg`**) and configured it with `sb_publishable_DPseX8KCpm9foxQjpTEJjQ_gQd20TAW` in both `.env` and Vercel dashboard. Triggered **Redeploy** to apply changes.
 
 ---
 
 ## 4. Next Steps for SaaS Escalation
 1. **Stripe API Payments**: Connect Stripe Connect to enable real booking charges and split commissions automatically between the platform owner and hosts.
+2. **Supabase Edge Functions Webhook Setup**: Connect Lemon Squeezy subscription webhooks via API handlers.

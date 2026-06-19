@@ -33,5 +33,5 @@
 - [x] Host Subscribed Billing Portal → verify: Manage Billing redirect button active on host tier active view
 - [x] Custom Spares & Fuel Menus → verify: Accessibility parameters and nutrition/mechanic data cards display properly on stays
 - [ ] Supabase Edge Functions Webhook Setup → verify: Deploy `lemon-squeezy-webhook` function and register URL in dashboard
-- [ ] Production Environment Var Switch → verify: Switch VITE_LEMON_SQUEEZY_CHECKOUT_URL to real variants before launch
+- [x] Production Environment Var Switch → verify: Resolved URL mismatch using correct Reference ID (qvezomdstiudvbkuawlg) and verified Vercel deploy.
 
