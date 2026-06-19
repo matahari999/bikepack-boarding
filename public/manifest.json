@@ -1,0 +1,16 @@
+{
+  "short_name": "Bikepack",
+  "name": "Bikepack Boarding",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0a0a0c",
+  "theme_color": "#a3e635",
+  "display": "standalone",
+  "orientation": "portrait"
+}
